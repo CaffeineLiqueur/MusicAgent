@@ -1,0 +1,27 @@
+# Node / frontend
+node_modules/
+pnpm-lock.yaml
+dist/
+build/
+.vite/
+.turbo/
+.parcel-cache/
+
+# Python / backend
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Env / local
+.env
+.env.local
+.env.*.local
+
