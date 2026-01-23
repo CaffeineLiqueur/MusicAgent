@@ -46,3 +46,7 @@
 ## 注意
 - 数据库迁移、表结构等未涉及；若后续加入存储，请遵守现有规范，避免直接修改迁移文件（按团队约定执行）。
 
+## PWA 与移动端调试
+- 前端已接入 PWA（service worker + manifest）；首次交互需点击页面上的“启用音频”按钮以解锁 iOS 音频。
+- 本地手机调试需 https：可在 `frontend/.env.local` 中设置 `VITE_DEV_HTTPS=1`，并提供 `VITE_SSL_CERT`/`VITE_SSL_KEY`（自签证书）。Vite dev server 已监听 `0.0.0.0`，手机同局域网访问 `https://<电脑IP>:5173`。
+- 采样文件（Tone.js Salamander）采用 runtime cache，首次播放会下载并缓存；缓存上限默认 14 天、最多 200 项。

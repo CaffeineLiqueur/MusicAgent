@@ -64,6 +64,14 @@ async function ensureToneStarted() {
   }
 }
 
+export function isAudioUnlocked(): boolean {
+  return context.state === "running";
+}
+
+export async function unlockAudio(): Promise<void> {
+  await ensureToneStarted();
+}
+
 export async function playChord(
   midi: number[],
   mode: PlayMode = "block",

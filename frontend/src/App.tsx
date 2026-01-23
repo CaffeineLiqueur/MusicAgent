@@ -1,9 +1,13 @@
 import React from "react";
-import ChordPicker from "./components/ChordPicker";
 import PianoKeyboard from "./components/PianoKeyboard";
 import { fetchChord } from "./lib/api";
 import { ChordResponse } from "./lib/chordTypes";
 import { playChord, playNote } from "./lib/player";
+import HeaderBar from "./components/HeaderBar";
+import ChordForm from "./components/ChordForm";
+import ResultPanel from "./components/ResultPanel";
+import SampleCachePanel from "./components/SampleCachePanel";
+import { clearSamples, downloadSamples } from "./lib/chordLocal";
 
 type PlayMode = "block" | "arp";
 
@@ -19,7 +23,20 @@ const App: React.FC = () => {
   const [data, setData] = React.useState<ChordResponse | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const audioCtx = React.useRef<AudioContext | null>(null);
+  const [advancedOpen, setAdvancedOpen] = React.useState(false);
+  const [history, setHistory] = React.useState<string[]>([]);
+  const [isLandscape, setIsLandscape] = React.useState<boolean>(() =>
+    typeof window !== "undefined" ? window.matchMedia("(orientation: landscape)").matches : false
+  );
+  const [cacheStatus, setCacheStatus] = React.useState("采样未下载，首次离线播放可能缺少部分音符");
+  const [cacheBusy, setCacheBusy] = React.useState(false);
+
+  React.useEffect(() => {
+    const mq = window.matchMedia("(orientation: landscape)");
+    const listener = (e: MediaQueryListEvent) => setIsLandscape(e.matches);
+    mq.addEventListener("change", listener);
+    return () => mq.removeEventListener("change", listener);
+  }, []);
 
   const doFetch = async (overrideSymbol?: string) => {
     const target = (overrideSymbol ?? symbol).trim();
@@ -40,6 +57,10 @@ const App: React.FC = () => {
         rangeMax: defaultRange.max
       });
       setData(res);
+      setHistory((prev) => {
+        const next = [target, ...prev.filter((v) => v !== target)];
+        return next.slice(0, 5);
+      });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "请求失败");
     } finally {
@@ -68,121 +89,92 @@ const App: React.FC = () => {
     doFetch(sym);
   };
 
+  if (!isLandscape) {
+    return (
+      <div className="orientation-block">
+        <div className="orientation-card">
+          <p className="eyebrow">温馨提示</p>
+          <h2>请横屏使用</h2>
+          <p className="muted">为获得完整的键盘与控制体验，请旋转设备到横屏。</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="page">
-      <header className="hero">
-        <div>
-          <p className="eyebrow">MusicAgent • 工作台</p>
-          <h1>🎶 MUSICAGENT WORKBENCH</h1>
-        </div>
-      </header>
+      <HeaderBar />
+      <div className="layout column">
+        <div className="card combo-card">
+          <ChordForm
+            symbol={symbol}
+            musicalKey={musicalKey}
+            inversion={inversion}
+            octave={octave}
+            transpose={transpose}
+            loading={loading}
+            onSymbolChange={setSymbol}
+            onKeyChange={setMusicalKey}
+            onInversionChange={setInversion}
+            onOctaveChange={setOctave}
+            onTransposeChange={setTranspose}
+            onParse={() => doFetch()}
+            onRandom={randomChord}
+            advancedOpen={advancedOpen}
+            onToggleAdvanced={() => setAdvancedOpen((v) => !v)}
+            history={history}
+          />
 
-      <div className="panel">
-        <div className="panel-header">
-          <h2>和弦与调性</h2>
-          <div className="actions">
-            <button className="button" onClick={randomChord} disabled={loading}>
-              随机和弦
-            </button>
-          </div>
-        </div>
+          {error && <div className="error-text">{error}</div>}
 
-        <ChordPicker
-          symbol={symbol}
-          onSymbolChange={setSymbol}
-          musicalKey={musicalKey}
-          onKeyChange={setMusicalKey}
-          onParse={() => doFetch()}
-          parsing={loading}
-        />
+          <ResultPanel
+            data={data}
+            playMode={playMode}
+            variant="plain"
+            showHeader={false}
+            onPlay={(mode) => {
+              setPlayMode(mode);
+              handlePlay(mode);
+            }}
+          />
 
-        <div className="control-grid">
-          <div className="field">
-            <label>转位</label>
-            <input
-              className="input"
-              type="number"
-              min={0}
-              max={3}
-              value={inversion}
-              onChange={(e) => setInversion(Number(e.target.value))}
-            />
-          </div>
-          <div className="field">
-            <label>基准八度</label>
-            <input
-              className="input"
-              type="number"
-              min={1}
-              max={7}
-              value={octave}
-              onChange={(e) => setOctave(Number(e.target.value))}
-            />
-          </div>
-          <div className="field">
-            <label>移调(半音)</label>
-            <input
-              className="input"
-              type="number"
-              value={transpose}
-              onChange={(e) => setTranspose(Number(e.target.value))}
-            />
-          </div>
-        </div>
-        {error && <div className="error-text">{error}</div>}
-      </div>
-
-      <div className="panel highlight keyboard-panel">
-        <div className="panel-header" style={{ justifyContent: "space-between", alignItems: "center" }}>
           {data ? (
-            <div className="pill-row tight">
-              <span className="pill strong">和弦：{data.symbol}</span>
-              {data.roman && <span className="pill strong">罗马：{data.roman}</span>}
-              <span className="pill">音名：{data.tones.join(", ")}</span>
-              <span className="pill">公式：{data.formula.join(" ")}</span>
+            <div className="keyboard-shell scrollable">
+              <PianoKeyboard highlightKeys={data.midi} range={range} onKeyPress={(m) => playNote(m)} />
             </div>
           ) : (
-            <div />
+            <div className="empty">解析后将高亮对应音，左右滑动可查看更多键。</div>
           )}
-          <div className="actions">
-            <button
-              className={`chip ${playMode === "block" ? "active" : ""}`}
-              onClick={() => {
-                setPlayMode("block");
-                handlePlay("block");
-              }}
-              disabled={!data}
-            >
-              齐奏
-            </button>
-            <button
-              className={`chip ${playMode === "arp" ? "active" : ""}`}
-              onClick={() => {
-                setPlayMode("arp");
-                handlePlay("arp");
-              }}
-              disabled={!data}
-            >
-              分解
-            </button>
-          </div>
         </div>
 
-        {data ? (
-          <>
-            <div className="keyboard-shell">
-              <PianoKeyboard
-                highlightKeys={data.midi}
-                range={range}
-                onKeyPress={(m) => playNote(m)}
-              />
-            </div>
-          </>
-        ) : (
-          <div className="empty">
-            <p>输入和弦并点击「解析和弦」，即可查看高亮与试听。</p>
-          </div>
-        )}
+        <SampleCachePanel
+          busy={cacheBusy}
+          status={cacheStatus}
+          onDownload={async () => {
+            setCacheBusy(true);
+            try {
+              await downloadSamples((done, total) => {
+                setCacheStatus(`下载中 ${done}/${total} ...`);
+              });
+              setCacheStatus("采样已下载，离线可播放全音域（Salamander 子集）");
+            } catch (err) {
+              setCacheStatus(err instanceof Error ? err.message : "下载失败");
+            } finally {
+              setCacheBusy(false);
+            }
+          }}
+          onClear={async () => {
+            setCacheBusy(true);
+            try {
+              await clearSamples();
+              setCacheStatus("已清理采样缓存");
+            } catch (err) {
+              setCacheStatus(err instanceof Error ? err.message : "清理失败");
+            } finally {
+              setCacheBusy(false);
+            }
+          }}
+        />
       </div>
     </div>
   );
