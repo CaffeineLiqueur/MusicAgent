@@ -10,10 +10,12 @@ import SampleCachePanel from "./components/SampleCachePanel";
 import { clearSamples, downloadSamples } from "./lib/chordLocal";
 
 type PlayMode = "block" | "arp";
+type ViewMode = "home" | "chord";
 
 const defaultRange = { min: 36, max: 96 };
 
 const App: React.FC = () => {
+  const [view, setView] = React.useState<ViewMode>("home");
   const [symbol, setSymbol] = React.useState("Cmaj7");
   const [musicalKey, setMusicalKey] = React.useState<string>("");
   const [inversion, setInversion] = React.useState(0);
@@ -89,6 +91,24 @@ const App: React.FC = () => {
     doFetch(sym);
   };
 
+  if (view === "home") {
+    return (
+      <div className="home">
+        <div className="home-content">
+          <div className="home-brand">
+            <img className="home-logo" src="/icons/icon-gemini.png" alt="SelahFlow" />
+            <h1 className="home-title">SelahFlow</h1>
+          </div>
+          <div className="home-actions">
+            <button className="button home-button" type="button" onClick={() => setView("chord")}>
+              和弦查询
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!isLandscape) {
     return (
       <div className="orientation-block">
@@ -103,7 +123,7 @@ const App: React.FC = () => {
 
   return (
     <div className="page">
-      <HeaderBar />
+      <HeaderBar onBack={() => setView("home")} />
       <div className="layout column">
         <div className="card combo-card">
           <ChordForm

@@ -35,6 +35,7 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: "autoUpdate",
+        includeAssets: ["icons/icon.svg", "icons/icon-gemini.png"],
         manifest: {
           name: "MusicAgent",
           short_name: "MusicAgent",
@@ -64,6 +65,18 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           runtimeCaching: [
+            {
+              urlPattern: ({ request, url }) =>
+                request.destination === "image" && url.origin === self.location.origin,
+              handler: "CacheFirst",
+              options: {
+                cacheName: "app-images",
+                expiration: {
+                  maxEntries: 100,
+                  maxAgeSeconds: 60 * 60 * 24 * 30
+                }
+              }
+            },
             {
               urlPattern: /^https:\/\/tonejs\.github\.io\/audio\/salamander\/.*\.(mp3|wav)$/i,
               handler: "StaleWhileRevalidate",
