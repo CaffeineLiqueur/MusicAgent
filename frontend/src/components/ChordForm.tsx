@@ -13,7 +13,6 @@ type ChordFormProps = {
   onInversionChange: (v: number) => void;
   onOctaveChange: (v: number) => void;
   onTransposeChange: (v: number) => void;
-  onParse: () => void;
   onRandom: () => void;
   advancedOpen: boolean;
   onToggleAdvanced: () => void;
@@ -86,7 +85,6 @@ const ChordForm: React.FC<ChordFormProps> = ({
   onInversionChange,
   onOctaveChange,
   onTransposeChange,
-  onParse,
   onRandom,
   advancedOpen,
   onToggleAdvanced,
@@ -114,9 +112,6 @@ const ChordForm: React.FC<ChordFormProps> = ({
           )}
         </div>
         <div className="row">
-          <button className="button" onClick={onParse} disabled={loading || !symbol.trim()}>
-            {loading ? "解析中..." : "解析和弦"}
-          </button>
           <button className="button ghost" onClick={onRandom} disabled={loading}>
             随机和弦
           </button>

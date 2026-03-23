@@ -90,6 +90,16 @@ const App: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // 自动解析和弦：当和弦符号或参数变化时自动解析
+  React.useEffect(() => {
+    const target = symbol.trim();
+    // 只有当和弦符号非空且以A-G开头时才自动解析
+    if (target && /^[A-Ga-g]/.test(target)) {
+      doFetch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol, musicalKey, inversion, octave, transpose]);
+
   const handlePlay = async (mode: PlayMode) => {
     if (!data) return;
     if (!audioEnabled) {
@@ -173,7 +183,6 @@ const App: React.FC = () => {
             onInversionChange={setInversion}
             onOctaveChange={setOctave}
             onTransposeChange={setTranspose}
-            onParse={() => doFetch()}
             onRandom={randomChord}
             advancedOpen={advancedOpen}
             onToggleAdvanced={() => setAdvancedOpen((v) => !v)}

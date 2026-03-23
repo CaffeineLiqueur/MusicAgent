@@ -16,6 +16,8 @@ const NOTE_TO_SEMITONE: Record<string, number> = {
   "D#": 3,
   Eb: 3,
   E: 4,
+  "E#": 5,
+  Fb: 4,
   F: 5,
   "F#": 6,
   Gb: 6,
@@ -25,7 +27,9 @@ const NOTE_TO_SEMITONE: Record<string, number> = {
   A: 9,
   "A#": 10,
   Bb: 10,
-  B: 11
+  B: 11,
+  "B#": 0,
+  Cb: 11
 };
 
 const SEMITONE_TO_NOTE = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
@@ -42,6 +46,7 @@ const QUALITY_INTERVALS: Record<string, number[]> = {
   sus2: [0, 2, 7],
   sus4: [0, 5, 7],
   "6": [0, 4, 7, 9],
+  m6: [0, 3, 7, 9],
   "6/9": [0, 4, 7, 9, 14],
   "69": [0, 4, 7, 9, 14],
   "7": [0, 4, 7, 10],
@@ -133,6 +138,17 @@ export function computeChordLocal(query: ChordQuery): ChordResponse {
   };
 }
 
+function parseNote(noteStr: string): string {
+  const s = noteStr.trim();
+  if (!s) return "";
+  const root = s.charAt(0).toUpperCase();
+  let accidental = s.slice(1);
+  if (accidental.toLowerCase() === "b") accidental = "b";
+  else if (accidental === "#") accidental = "#";
+  else accidental = "";
+  return root + accidental;
+}
+
 function parseChordSymbol(symbol: string): ParsedChord {
   const text = symbol.trim();
   if (!text || !"ABCDEFG".includes(text[0].toUpperCase())) {
@@ -141,9 +157,15 @@ function parseChordSymbol(symbol: string): ParsedChord {
   const root = text[0].toUpperCase();
   let idx = 1;
   let accidental = "";
-  if (idx < text.length && (text[idx] === "b" || text[idx] === "#")) {
-    accidental = text[idx];
-    idx += 1;
+  if (idx < text.length) {
+    const c = text[idx];
+    if (c === "b" || c === "B") {
+      accidental = "b";
+      idx += 1;
+    } else if (c === "#") {
+      accidental = "#";
+      idx += 1;
+    }
   }
   let body = text.slice(idx);
   let bass: string | null = null;
@@ -195,7 +217,11 @@ function buildMidiNotes(
   parsed: ParsedChord,
   opts: { octave: number; inversion: number; transpose: number; fitRange: [number, number] }
 ): [number[], string[]] {
-  const rootPc = NOTE_TO_SEMITONE[`${parsed.root}${parsed.accidental}`];
+  const rootNote = `${parsed.root}${parsed.accidental}`;
+  const rootPc = NOTE_TO_SEMITONE[rootNote];
+  if (rootPc === undefined) {
+    throw new Error(`Invalid root note: ${rootNote}`);
+  }
   const baseRoot = toMidiNumber(rootPc, opts.octave);
   const intervals = [...(QUALITY_INTERVALS[parsed.quality] ?? QUALITY_INTERVALS[""])];
   for (const alt of parsed.alterations) {
@@ -208,10 +234,13 @@ function buildMidiNotes(
   let notes = intervals.map((i) => baseRoot + i);
 
   if (parsed.bass) {
-    const bassPc = NOTE_TO_SEMITONE[parsed.bass];
-    const bassNote = toMidiNumber(bassPc, opts.octave - 1);
-    notes.push(bassNote);
-    notes.sort((a, b) => a - b);
+    const normalizedBass = parseNote(parsed.bass);
+    const bassPc = NOTE_TO_SEMITONE[normalizedBass];
+    if (bassPc !== undefined) {
+      const bassNote = toMidiNumber(bassPc, opts.octave - 1);
+      notes.push(bassNote);
+      notes.sort((a, b) => a - b);
+    }
   }
 
   notes = applyInversion(notes, opts.inversion);
@@ -261,7 +290,7 @@ function clampToRange(notes: number[], bounds: [number, number]): number[] {
 
 function toRoman(parsed: ParsedChord, key?: string | null): string | null {
   if (!key) return null;
-  const rootKey = key.trim().charAt(0).toUpperCase() + key.trim().slice(1);
+  const rootKey = parseNote(key);
   if (!(rootKey in NOTE_TO_SEMITONE)) return null;
   const rootPc = NOTE_TO_SEMITONE[`${parsed.root}${parsed.accidental}`];
   const keyPc = NOTE_TO_SEMITONE[rootKey];

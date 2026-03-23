@@ -95,6 +95,18 @@ export default defineConfig(({ mode }) => {
                   statuses: [0, 200]
                 }
               }
+            },
+            {
+              urlPattern: ({ request, url }) =>
+                request.destination === "audio" && url.pathname.includes("/samples/"),
+              handler: "CacheFirst",
+              options: {
+                cacheName: "instrument-samples",
+                expiration: {
+                  maxEntries: 100,
+                  maxAgeSeconds: 60 * 60 * 24 * 365
+                }
+              }
             }
           ]
         }

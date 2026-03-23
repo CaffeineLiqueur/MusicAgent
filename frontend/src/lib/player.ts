@@ -1,11 +1,36 @@
 import { Sampler, context, now, start, PolySynth, Synth } from "tone";
+import { assetPath } from "./basePath";
 
 export type InstrumentType = "piano" | "guitar";
 type PlayMode = "block" | "arp";
 
+// 采样源类型
+export type SampleSource = "official" | "self-hosted" | "custom";
+
+// 采样源配置
+const SAMPLE_SOURCES: Record<SampleSource, string> = {
+  official: "https://tonejs.github.io/audio/salamander/",
+  "self-hosted": "/samples/salamander/",
+  custom: import.meta.env.VITE_PIANO_SAMPLES_URL || "",
+};
+
+// 当前使用的采样源 - 可以通过环境变量 VITE_PIANO_SAMPLE_SOURCE 配置
+const CURRENT_SOURCE: SampleSource = (import.meta.env.VITE_PIANO_SAMPLE_SOURCE as SampleSource) || "official";
+
+// 获取采样基础 URL
+function getSampleBaseUrl(): string {
+  const source = SAMPLE_SOURCES[CURRENT_SOURCE];
+  if (CURRENT_SOURCE === "self-hosted") {
+    return assetPath(source);
+  }
+  return source;
+}
+
 // 钢琴采样配置
 const PIANO_CONFIG = {
-  baseUrl: "https://tonejs.github.io/audio/salamander/",
+  get baseUrl() {
+    return getSampleBaseUrl();
+  },
   samples: {
     A0: "A0.mp3",
     C1: "C1.mp3",
@@ -40,6 +65,14 @@ const PIANO_CONFIG = {
   }
 };
 
+// 获取当前采样源信息
+export function getSampleSourceInfo(): { source: SampleSource; url: string } {
+  return {
+    source: CURRENT_SOURCE,
+    url: getSampleBaseUrl(),
+  };
+}
+
 // 乐器实例存储
 type InstrumentInstance = Sampler | PolySynth;
 const instruments: Partial<Record<InstrumentType, Promise<InstrumentInstance>>> = {};
@@ -51,14 +84,36 @@ function midiToNoteName(midi: number): string {
   return `${names[pc]}${octave}`;
 }
 
+// 加载状态回调
+type LoadingCallback = (loaded: number, total: number) => void;
+let onLoadingUpdate: LoadingCallback | null = null;
+
+// 设置加载状态回调
+export function setSampleLoadingCallback(callback: LoadingCallback | null) {
+  onLoadingUpdate = callback;
+}
+
 // 创建钢琴采样器
 async function createPianoSampler(): Promise<Sampler> {
   return new Promise((resolve, reject) => {
-    const sampler = new Sampler(PIANO_CONFIG.samples, {
+    const samples = PIANO_CONFIG.samples;
+    const sampleCount = Object.keys(samples).length;
+
+    console.log(`Loading piano samples from: ${PIANO_CONFIG.baseUrl}`);
+
+    const sampler = new Sampler({
+      urls: samples,
       baseUrl: PIANO_CONFIG.baseUrl,
-      onload: () => resolve(sampler),
-      onerror: (err) => reject(err),
-      release: 1.5
+      release: 1.5,
+      onload: () => {
+        console.log("Piano samples loaded successfully");
+        onLoadingUpdate?.(sampleCount, sampleCount);
+        resolve(sampler);
+      },
+      onerror: (err) => {
+        console.error("Failed to load piano samples:", err);
+        reject(err);
+      }
     }).toDestination();
   });
 }
