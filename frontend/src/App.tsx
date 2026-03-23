@@ -92,6 +92,14 @@ const App: React.FC = () => {
 
   const handlePlay = async (mode: PlayMode) => {
     if (!data) return;
+    if (!audioEnabled) {
+      try {
+        await unlockAudio();
+        setAudioEnabled(true);
+      } catch (e) {
+        console.error("Failed to unlock audio:", e);
+      }
+    }
     await playChord(data.midi, mode, instrument);
   };
 
@@ -106,13 +114,16 @@ const App: React.FC = () => {
     doFetch(sym);
   };
 
-  const handleEnableAudio = async () => {
-    try {
-      await unlockAudio();
-      setAudioEnabled(true);
-    } catch (e) {
-      console.error("Failed to unlock audio:", e);
+  const ensureAudioAndGo = async () => {
+    if (!audioEnabled) {
+      try {
+        await unlockAudio();
+        setAudioEnabled(true);
+      } catch (e) {
+        console.error("Failed to unlock audio:", e);
+      }
     }
+    setView("chord");
   };
 
   if (view === "home") {
@@ -124,12 +135,7 @@ const App: React.FC = () => {
             <h1 className="home-title">SelahFlow</h1>
           </div>
           <div className="home-actions">
-            {!audioEnabled && (
-              <button className="button home-button" type="button" onClick={handleEnableAudio} style={{ marginBottom: "12px", background: "#10b981" }}>
-                🔊 启用音频
-              </button>
-            )}
-            <button className="button home-button" type="button" onClick={() => setView("chord")}>
+            <button className="button home-button" type="button" onClick={ensureAudioAndGo}>
               和弦查询
             </button>
           </div>
@@ -191,7 +197,21 @@ const App: React.FC = () => {
 
           {data ? (
             <div className="keyboard-shell scrollable">
-              <PianoKeyboard highlightKeys={data.midi} range={range} onKeyPress={(m) => playNote(m, instrument)} />
+              <PianoKeyboard
+                highlightKeys={data.midi}
+                range={range}
+                onKeyPress={async (m) => {
+                  if (!audioEnabled) {
+                    try {
+                      await unlockAudio();
+                      setAudioEnabled(true);
+                    } catch (e) {
+                      console.error("Failed to unlock audio:", e);
+                    }
+                  }
+                  playNote(m, instrument);
+                }}
+              />
             </div>
           ) : (
             <div className="empty">解析后将高亮对应音，左右滑动可查看更多键。</div>
