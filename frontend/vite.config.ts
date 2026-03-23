@@ -30,7 +30,12 @@ export default defineConfig(({ mode }) => {
     }
   }
 
+  // GitHub Pages 需要设置 base 为仓库名
+  const isGitHubPages = mode === "production";
+  const base = isGitHubPages ? "/MusicAgent/" : "/";
+
   return {
+    base,
     plugins: [
       react(),
       VitePWA({
@@ -39,8 +44,8 @@ export default defineConfig(({ mode }) => {
         manifest: {
           name: "MusicAgent",
           short_name: "MusicAgent",
-          start_url: "/",
-          scope: "/",
+          start_url: base,
+          scope: base,
           display: "standalone",
           theme_color: "#0f172a",
           background_color: "#0f172a",
