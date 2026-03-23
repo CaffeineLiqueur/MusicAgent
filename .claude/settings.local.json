@@ -3,9 +3,9 @@
     "allow": [
       "Bash(pnpm install:*)",
       "Bash(npm install:*)",
-      "Bash(pnpm dev:*)",
       "Bash(cd:*)",
-      "Bash(node download-samples.js)"
+      "Bash(node download-samples.js)",
+      "Bash(pnpm build:*)"
     ]
   }
 }

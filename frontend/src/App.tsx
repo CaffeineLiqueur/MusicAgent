@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import PianoKeyboard from "./components/PianoKeyboard";
+import ChordProgression from "./components/ChordProgression";
 import { fetchChord } from "./lib/api";
 import { ChordResponse } from "./lib/chordTypes";
 import { playChord, playNote, InstrumentType, preloadInstruments, unlockAudio, isAudioUnlocked } from "./lib/player";
@@ -10,7 +11,7 @@ import Metronome from "./components/Metronome";
 import { assetPath } from "./lib/basePath";
 
 type PlayMode = "block" | "arp";
-type ViewMode = "home" | "chord";
+type ViewMode = "home" | "chord" | "progression";
 
 const defaultRange = { min: 36, max: 96 };
 
@@ -148,10 +149,31 @@ const App: React.FC = () => {
             <button className="button home-button" type="button" onClick={ensureAudioAndGo}>
               和弦查询
             </button>
+            <button
+              className="button home-button"
+              type="button"
+              onClick={async () => {
+                if (!audioEnabled) {
+                  try {
+                    await unlockAudio();
+                    setAudioEnabled(true);
+                  } catch (e) {
+                    console.error("Failed to unlock audio:", e);
+                  }
+                }
+                setView("progression");
+              }}
+            >
+              和弦进行
+            </button>
           </div>
         </div>
       </div>
     );
+  }
+
+  if (view === "progression") {
+    return <ChordProgression onBack={() => setView("home")} />;
   }
 
   if (!isLandscape) {

@@ -222,6 +222,117 @@ export async function playNote(
   return playChord([midi], "block", instrument);
 }
 
+// 和弦进行播放器
+export type ProgressionPlayerConfig = {
+  bpm: number;
+  beatsPerChord: number;
+  playMode: PlayMode;
+  instrument: InstrumentType;
+  loop: boolean;
+};
+
+export class ProgressionPlayer {
+  private isPlaying: boolean = false;
+  private stopRequested: boolean = false;
+  private currentIndex: number = 0;
+  private config: ProgressionPlayerConfig;
+  private onChordChange?: (index: number) => void;
+  private onStop?: () => void;
+
+  constructor(config: Partial<ProgressionPlayerConfig> = {}) {
+    this.config = {
+      bpm: 100,
+      beatsPerChord: 4,
+      playMode: "block",
+      instrument: "piano",
+      loop: true,
+      ...config
+    };
+  }
+
+  setConfig(config: Partial<ProgressionPlayerConfig>) {
+    this.config = { ...this.config, ...config };
+  }
+
+  getConfig(): ProgressionPlayerConfig {
+    return { ...this.config };
+  }
+
+  setOnChordChange(callback: (index: number) => void) {
+    this.onChordChange = callback;
+  }
+
+  setOnStop(callback: () => void) {
+    this.onStop = callback;
+  }
+
+  async play(
+    chords: number[][],
+    startIndex: number = 0
+  ): Promise<void> {
+    if (this.isPlaying) return;
+
+    this.isPlaying = true;
+    this.stopRequested = false;
+    this.currentIndex = startIndex;
+
+    await ensureToneStarted();
+
+    const beatDuration = 60 / this.config.bpm;
+    const chordDuration = beatDuration * this.config.beatsPerChord;
+
+    while (!this.stopRequested && chords.length > 0) {
+      const chordNotes = chords[this.currentIndex];
+
+      // 触发和弦变化回调
+      this.onChordChange?.(this.currentIndex);
+
+      // 播放当前和弦
+      if (chordNotes.length > 0) {
+        await playChord(
+          chordNotes,
+          this.config.playMode,
+          this.config.instrument
+        );
+      }
+
+      // 等待下一个和弦
+      const startTime = performance.now();
+      while (!this.stopRequested && (performance.now() - startTime) < chordDuration * 1000) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      if (this.stopRequested) break;
+
+      // 移动到下一个和弦
+      this.currentIndex++;
+      if (this.currentIndex >= chords.length) {
+        if (this.config.loop) {
+          this.currentIndex = 0;
+        } else {
+          break;
+        }
+      }
+    }
+
+    this.isPlaying = false;
+    this.stopRequested = false;
+    this.onStop?.();
+  }
+
+  stop(): void {
+    this.stopRequested = true;
+  }
+
+  getCurrentIndex(): number {
+    return this.currentIndex;
+  }
+
+  getIsPlaying(): boolean {
+    return this.isPlaying;
+  }
+}
+
 // 预加载所有乐器
 export async function preloadInstruments(): Promise<void> {
   await ensureToneStarted();
