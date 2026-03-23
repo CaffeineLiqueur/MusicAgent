@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { ChordResponse } from "../lib/chordTypes";
 
 type ChordFormProps = {
@@ -20,6 +20,60 @@ type ChordFormProps = {
   history: string[];
 };
 
+const NOTES = ["C", "D", "E", "F", "G", "A", "B"];
+const ACCIDENTALS = ["", "#", "b"];
+const QUALITIES = [
+  { value: "", label: "大三" },
+  { value: "m", label: "小三" },
+  { value: "7", label: "属七" },
+  { value: "maj7", label: "大七" },
+  { value: "m7", label: "小七" },
+  { value: "m7b5", label: "半减七" },
+  { value: "dim7", label: "减七" },
+  { value: "sus2", label: "挂二" },
+  { value: "sus4", label: "挂四" },
+  { value: "add9", label: "加九" },
+  { value: "6/9", label: "六九" },
+  { value: "6", label: "六" },
+  { value: "m6", label: "小六" },
+  { value: "maj9", label: "大九" },
+  { value: "9", label: "属九" },
+  { value: "m9", label: "小九" },
+];
+
+// 从和弦符号解析出根音、变音记号、和弦性质
+const parseSymbol = (symbol: string) => {
+  if (!symbol) return { note: "C", accidental: "", quality: "" };
+
+  // 匹配根音（CDEFGAB）
+  const noteMatch = symbol.match(/^[A-G]/);
+  if (!noteMatch) return { note: "C", accidental: "", quality: "" };
+
+  const note = noteMatch[0];
+  const remaining = symbol.slice(note.length);
+
+  // 匹配变音记号（#或b）
+  let accidental = "";
+  let qualityStart = 0;
+  if (remaining.startsWith("#")) {
+    accidental = "#";
+    qualityStart = 1;
+  } else if (remaining.startsWith("b")) {
+    accidental = "b";
+    qualityStart = 1;
+  }
+
+  const quality = remaining.slice(qualityStart);
+
+  // 验证quality是否在我们的列表中
+  const validQuality = QUALITIES.find(q => q.value === quality);
+  return {
+    note,
+    accidental,
+    quality: validQuality ? quality : ""
+  };
+};
+
 const ChordForm: React.FC<ChordFormProps> = ({
   symbol,
   musicalKey,
@@ -38,6 +92,13 @@ const ChordForm: React.FC<ChordFormProps> = ({
   onToggleAdvanced,
   history
 }) => {
+  const parsed = useMemo(() => parseSymbol(symbol), [symbol]);
+
+  const handlePickerChange = (note: string, accidental: string, quality: string) => {
+    const newSymbol = note + accidental + quality;
+    onSymbolChange(newSymbol);
+  };
+
   return (
     <section className="section">
       <div className="row" style={{ justifyContent: "space-between" }}>
@@ -59,6 +120,40 @@ const ChordForm: React.FC<ChordFormProps> = ({
           <button className="button ghost" onClick={onRandom} disabled={loading}>
             随机和弦
           </button>
+        </div>
+      </div>
+
+      {/* 和弦选择器 */}
+      <div className="chord-picker">
+        <label className="picker-label">快速选择和弦</label>
+        <div className="picker-row">
+          <select
+            className="picker-select"
+            value={parsed.note}
+            onChange={(e) => handlePickerChange(e.target.value, parsed.accidental, parsed.quality)}
+          >
+            {NOTES.map(n => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+          <select
+            className="picker-select"
+            value={parsed.accidental}
+            onChange={(e) => handlePickerChange(parsed.note, e.target.value, parsed.quality)}
+          >
+            <option value="">原调</option>
+            <option value="#"># (升)</option>
+            <option value="b">b (降)</option>
+          </select>
+          <select
+            className="picker-select quality-select"
+            value={parsed.quality}
+            onChange={(e) => handlePickerChange(parsed.note, parsed.accidental, e.target.value)}
+          >
+            {QUALITIES.map(q => (
+              <option key={q.value} value={q.value}>{q.label}{q.value ? ` (${q.value})` : ""}</option>
+            ))}
+          </select>
         </div>
       </div>
 

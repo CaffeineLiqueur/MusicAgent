@@ -7,9 +7,11 @@ type HeaderBarProps = {
 const HeaderBar: React.FC<HeaderBarProps> = ({ onBack }) => {
   return (
     <header className="header-bar">
-      <div>
-        <p className="eyebrow">MusicAgent • 和弦工作台</p>
-        <h1 className="title">和弦查询</h1>
+      <div className="header-brand">
+        <img className="header-logo" src="/icons/icon-gemini.png" alt="SelahFlow" />
+        <div>
+          <h1 className="header-title">SelahFlow</h1>
+        </div>
       </div>
       {onBack ? (
         <div className="header-actions">

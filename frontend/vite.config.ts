@@ -79,12 +79,12 @@ export default defineConfig(({ mode }) => {
             },
             {
               urlPattern: /^https:\/\/tonejs\.github\.io\/audio\/salamander\/.*\.(mp3|wav)$/i,
-              handler: "StaleWhileRevalidate",
+              handler: "CacheFirst",
               options: {
-                cacheName: "salamander-samples",
+                cacheName: "instrument-samples",
                 expiration: {
-                  maxEntries: 200,
-                  maxAgeSeconds: 60 * 60 * 24 * 14
+                  maxEntries: 100,
+                  maxAgeSeconds: 60 * 60 * 24 * 365
                 },
                 cacheableResponse: {
                   statuses: [0, 200]

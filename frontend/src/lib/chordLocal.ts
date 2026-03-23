@@ -30,39 +30,6 @@ const NOTE_TO_SEMITONE: Record<string, number> = {
 
 const SEMITONE_TO_NOTE = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 const DEFAULT_RANGE: [number, number] = [36, 96];
-const SAMPLE_FILES = [
-  "A0.mp3",
-  "C1.mp3",
-  "Ds1.mp3",
-  "Fs1.mp3",
-  "A1.mp3",
-  "C2.mp3",
-  "Ds2.mp3",
-  "Fs2.mp3",
-  "A2.mp3",
-  "C3.mp3",
-  "Ds3.mp3",
-  "Fs3.mp3",
-  "A3.mp3",
-  "C4.mp3",
-  "Ds4.mp3",
-  "Fs4.mp3",
-  "A4.mp3",
-  "C5.mp3",
-  "Ds5.mp3",
-  "Fs5.mp3",
-  "A5.mp3",
-  "C6.mp3",
-  "Ds6.mp3",
-  "Fs6.mp3",
-  "A6.mp3",
-  "C7.mp3",
-  "Ds7.mp3",
-  "Fs7.mp3",
-  "A7.mp3",
-  "C8.mp3"
-];
-const SAMPLE_BASE = "https://tonejs.github.io/audio/salamander/";
 
 const QUALITY_INTERVALS: Record<string, number[]> = {
   maj: [0, 4, 7],
@@ -316,22 +283,4 @@ function toRoman(parsed: ParsedChord, key?: string | null): string | null {
     return `${base}/${parsed.bass}`;
   }
   return base;
-}
-
-// 采样缓存辅助
-export async function downloadSamples(onProgress?: (done: number, total: number) => void): Promise<void> {
-  if (!("caches" in window)) throw new Error("当前环境不支持 Cache Storage");
-  const cache = await caches.open("salamander-samples");
-  let count = 0;
-  for (const file of SAMPLE_FILES) {
-    const url = SAMPLE_BASE + file;
-    await cache.add(url);
-    count += 1;
-    onProgress?.(count, SAMPLE_FILES.length);
-  }
-}
-
-export async function clearSamples(): Promise<void> {
-  if (!("caches" in window)) return;
-  await caches.delete("salamander-samples");
 }

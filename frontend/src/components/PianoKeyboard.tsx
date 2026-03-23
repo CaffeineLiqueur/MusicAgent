@@ -47,8 +47,8 @@ export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
             y={0}
             width={WHITE_WIDTH}
             height={WHITE_HEIGHT}
-            fill={highlights.has(k.midi) ? "#fbbf24" : "#fff"}
-            stroke="#1f2937"
+            fill={highlights.has(k.midi) ? "#60a5fa" : "#f1f5f9"}
+            stroke="#1e293b"
             strokeWidth="1"
             rx="2"
             onMouseDown={() => onKeyPress?.(k.midi)}
@@ -64,8 +64,8 @@ export const PianoKeyboard: React.FC<PianoKeyboardProps> = ({
             y={0}
             width={BLACK_WIDTH}
             height={BLACK_HEIGHT}
-            fill={highlights.has(k.midi) ? "#f59e0b" : "#111"}
-            stroke="#111"
+            fill={highlights.has(k.midi) ? "#3b82f6" : "#0f172a"}
+            stroke="#020617"
             strokeWidth="1"
             rx="2"
             onMouseDown={() => onKeyPress?.(k.midi)}

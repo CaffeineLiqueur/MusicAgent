@@ -1,13 +1,12 @@
-import React from "react";
+import React, { useEffect } from "react";
 import PianoKeyboard from "./components/PianoKeyboard";
 import { fetchChord } from "./lib/api";
 import { ChordResponse } from "./lib/chordTypes";
-import { playChord, playNote } from "./lib/player";
+import { playChord, playNote, InstrumentType, preloadInstruments } from "./lib/player";
 import HeaderBar from "./components/HeaderBar";
 import ChordForm from "./components/ChordForm";
 import ResultPanel from "./components/ResultPanel";
-import SampleCachePanel from "./components/SampleCachePanel";
-import { clearSamples, downloadSamples } from "./lib/chordLocal";
+import Metronome from "./components/Metronome";
 
 type PlayMode = "block" | "arp";
 type ViewMode = "home" | "chord";
@@ -22,6 +21,7 @@ const App: React.FC = () => {
   const [octave, setOctave] = React.useState(4);
   const [transpose, setTranspose] = React.useState(0);
   const [playMode, setPlayMode] = React.useState<PlayMode>("block");
+  const [instrument, setInstrument] = React.useState<InstrumentType>("piano");
   const [data, setData] = React.useState<ChordResponse | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -30,14 +30,27 @@ const App: React.FC = () => {
   const [isLandscape, setIsLandscape] = React.useState<boolean>(() =>
     typeof window !== "undefined" ? window.matchMedia("(orientation: landscape)").matches : false
   );
-  const [cacheStatus, setCacheStatus] = React.useState("采样未下载，首次离线播放可能缺少部分音符");
-  const [cacheBusy, setCacheBusy] = React.useState(false);
+  const [preloading, setPreloading] = React.useState(true);
 
   React.useEffect(() => {
     const mq = window.matchMedia("(orientation: landscape)");
     const listener = (e: MediaQueryListEvent) => setIsLandscape(e.matches);
     mq.addEventListener("change", listener);
     return () => mq.removeEventListener("change", listener);
+  }, []);
+
+  // 预加载乐器采样
+  useEffect(() => {
+    const load = async () => {
+      try {
+        await preloadInstruments();
+      } catch {
+        // 忽略预加载错误，按需加载
+      } finally {
+        setPreloading(false);
+      }
+    };
+    load();
   }, []);
 
   const doFetch = async (overrideSymbol?: string) => {
@@ -77,7 +90,7 @@ const App: React.FC = () => {
 
   const handlePlay = async (mode: PlayMode) => {
     if (!data) return;
-    await playChord(data.midi, mode);
+    await playChord(data.midi, mode, instrument);
   };
 
   const range = data?.range ?? defaultRange;
@@ -150,51 +163,31 @@ const App: React.FC = () => {
           <ResultPanel
             data={data}
             playMode={playMode}
+            instrument={instrument}
             variant="plain"
             showHeader={false}
             onPlay={(mode) => {
               setPlayMode(mode);
               handlePlay(mode);
             }}
+            onInstrumentChange={setInstrument}
           />
 
           {data ? (
             <div className="keyboard-shell scrollable">
-              <PianoKeyboard highlightKeys={data.midi} range={range} onKeyPress={(m) => playNote(m)} />
+              <PianoKeyboard highlightKeys={data.midi} range={range} onKeyPress={(m) => playNote(m, instrument)} />
             </div>
           ) : (
             <div className="empty">解析后将高亮对应音，左右滑动可查看更多键。</div>
           )}
+          {preloading && (
+            <div className="muted" style={{ textAlign: "center", padding: "8px" }}>
+              正在预加载乐器采样...
+            </div>
+          )}
         </div>
 
-        <SampleCachePanel
-          busy={cacheBusy}
-          status={cacheStatus}
-          onDownload={async () => {
-            setCacheBusy(true);
-            try {
-              await downloadSamples((done, total) => {
-                setCacheStatus(`下载中 ${done}/${total} ...`);
-              });
-              setCacheStatus("采样已下载，离线可播放全音域（Salamander 子集）");
-            } catch (err) {
-              setCacheStatus(err instanceof Error ? err.message : "下载失败");
-            } finally {
-              setCacheBusy(false);
-            }
-          }}
-          onClear={async () => {
-            setCacheBusy(true);
-            try {
-              await clearSamples();
-              setCacheStatus("已清理采样缓存");
-            } catch (err) {
-              setCacheStatus(err instanceof Error ? err.message : "清理失败");
-            } finally {
-              setCacheBusy(false);
-            }
-          }}
-        />
+        <Metronome />
       </div>
     </div>
   );
