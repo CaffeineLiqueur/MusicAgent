@@ -40,7 +40,7 @@ export default defineConfig(({ mode }) => {
       react(),
       VitePWA({
         registerType: "autoUpdate",
-        includeAssets: ["icons/icon.svg", "icons/icon-gemini.png"],
+        includeAssets: [],
         manifest: {
           name: "MusicAgent",
           short_name: "MusicAgent",

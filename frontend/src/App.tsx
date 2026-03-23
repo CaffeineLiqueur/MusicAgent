@@ -1,12 +1,13 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import PianoKeyboard from "./components/PianoKeyboard";
 import { fetchChord } from "./lib/api";
 import { ChordResponse } from "./lib/chordTypes";
-import { playChord, playNote, InstrumentType, preloadInstruments } from "./lib/player";
+import { playChord, playNote, InstrumentType, preloadInstruments, unlockAudio, isAudioUnlocked } from "./lib/player";
 import HeaderBar from "./components/HeaderBar";
 import ChordForm from "./components/ChordForm";
 import ResultPanel from "./components/ResultPanel";
 import Metronome from "./components/Metronome";
+import { assetPath } from "./lib/basePath";
 
 type PlayMode = "block" | "arp";
 type ViewMode = "home" | "chord";
@@ -31,6 +32,7 @@ const App: React.FC = () => {
     typeof window !== "undefined" ? window.matchMedia("(orientation: landscape)").matches : false
   );
   const [preloading, setPreloading] = React.useState(true);
+  const [audioEnabled, setAudioEnabled] = useState(() => isAudioUnlocked());
 
   React.useEffect(() => {
     const mq = window.matchMedia("(orientation: landscape)");
@@ -104,15 +106,29 @@ const App: React.FC = () => {
     doFetch(sym);
   };
 
+  const handleEnableAudio = async () => {
+    try {
+      await unlockAudio();
+      setAudioEnabled(true);
+    } catch (e) {
+      console.error("Failed to unlock audio:", e);
+    }
+  };
+
   if (view === "home") {
     return (
       <div className="home">
         <div className="home-content">
           <div className="home-brand">
-            <img className="home-logo" src="/icons/icon-gemini.png" alt="SelahFlow" />
+            <img className="home-logo" src={assetPath("/icons/icon-gemini.png")} alt="SelahFlow" />
             <h1 className="home-title">SelahFlow</h1>
           </div>
           <div className="home-actions">
+            {!audioEnabled && (
+              <button className="button home-button" type="button" onClick={handleEnableAudio} style={{ marginBottom: "12px", background: "#10b981" }}>
+                🔊 启用音频
+              </button>
+            )}
             <button className="button home-button" type="button" onClick={() => setView("chord")}>
               和弦查询
             </button>
