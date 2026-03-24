@@ -30,9 +30,18 @@ export default defineConfig(({ mode }) => {
     }
   }
 
-  // GitHub Pages 需要设置 base 为仓库名
-  const isGitHubPages = mode === "production";
-  const base = isGitHubPages ? "/MusicAgent/" : "/";
+  // 生产默认根路径：子域名 selahflow.livenagain.com
+  // 子路径/GitHub Pages：构建前设置 VITE_DEPLOY_BASE=/selahflow/ 或 /MusicAgent/
+  const normalizeBase = (p: string) => {
+    const withSlash = p.startsWith("/") ? p : `/${p}`;
+    return withSlash.endsWith("/") ? withSlash : `${withSlash}/`;
+  };
+  const base =
+    mode === "development"
+      ? "/"
+      : env.VITE_DEPLOY_BASE
+        ? normalizeBase(env.VITE_DEPLOY_BASE)
+        : "/";
 
   return {
     base,
@@ -42,8 +51,8 @@ export default defineConfig(({ mode }) => {
         registerType: "autoUpdate",
         includeAssets: [],
         manifest: {
-          name: "MusicAgent",
-          short_name: "MusicAgent",
+          name: "SelahFlow",
+          short_name: "SelahFlow",
           start_url: base,
           scope: base,
           display: "standalone",

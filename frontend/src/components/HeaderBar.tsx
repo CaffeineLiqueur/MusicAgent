@@ -1,4 +1,5 @@
 import React from "react";
+import { assetPath } from "../lib/basePath";
 
 type HeaderBarProps = {
   onBack?: () => void;
@@ -8,7 +9,7 @@ const HeaderBar: React.FC<HeaderBarProps> = ({ onBack }) => {
   return (
     <header className="header-bar">
       <div className="header-brand">
-        <img className="header-logo" src="/icons/icon-gemini.png" alt="SelahFlow" />
+        <img className="header-logo" src={assetPath("/icons/icon-gemini.png")} alt="SelahFlow" />
         <div>
           <h1 className="header-title">SelahFlow</h1>
         </div>
