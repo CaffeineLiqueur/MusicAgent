@@ -5,7 +5,8 @@
       "Bash(npm install:*)",
       "Bash(cd:*)",
       "Bash(node download-samples.js)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(cp:*)"
     ]
   }
 }

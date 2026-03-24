@@ -8,74 +8,74 @@ export type ChordProgression = {
 
 export const PRESET_PROGRESSIONS: ChordProgression[] = [
   {
-    id: "pop-1",
-    name: "流行经典 I-V-vi-IV",
-    description: "最常用的流行歌和弦进行，适用于无数歌曲",
+    id: "50s-1",
+    name: "50s Progression / 灵歌进行",
+    description: "50-60年代经典，结构对称，复古纯真欢快，适用于早期摇滚乐、灵魂乐及复古风格乐曲",
+    key: "C",
+    chords: ["C", "Am", "Dm", "G"]
+  },
+  {
+    id: "golden-1",
+    name: "黄金进行",
+    description: "流行音乐的基石，包含主音、属音、下属音以及关系小调，完美闭环情感，听感稳重且向上（Let It Be, Someone Like You）",
     key: "C",
     chords: ["C", "G", "Am", "F"]
   },
   {
-    id: "pop-2",
-    name: "抒情 I-V-vi-IV (大调变体)",
-    description: "稍作变化的流行进行，更加柔和",
-    key: "G",
-    chords: ["G", "D", "Em", "C"]
+    id: "canon-1",
+    name: "卡农进行",
+    description: "源自巴洛克时期帕海贝尔《卡农》，低音音阶式下行，线性逻辑让听感极其顺滑（华语经典抒情歌如《勇气》、《红豆》）",
+    key: "C",
+    chords: ["C", "G", "Am", "Em", "F", "C", "Dm", "G"]
   },
   {
-    id: "jazz-1",
-    name: "爵士 ii-V-I",
-    description: "爵士和声中最经典的终止式",
+    id: "4536251-1",
+    name: "4536251 进行",
+    description: "基于五度循环的强力解决，每个和弦向下一个四度/五度推进，层层递进、情感升华，华语流行乐的“催泪神套路”",
+    key: "C",
+    chords: ["F", "G", "Em", "Am", "Dm", "G", "C"]
+  },
+  {
+    id: "jazz-251-1",
+    name: "2-5-1 进行",
+    description: "爵士乐和 R&B 的核心灵魂，通过 ii 级到 V 级的紧张感最终完美“解决”到 I 级，慵懒高级的现代都市感",
     key: "C",
     chords: ["Dm7", "G7", "Cmaj7"]
   },
   {
-    id: "jazz-2",
-    name: "爵士蓝调 I-IV-V",
-    description: "12小节蓝调的核心进行",
-    key: "F",
-    chords: ["F7", "Bb7", "F7", "F7", "Bb7", "Bb7", "F7", "F7", "C7", "Bb7", "F7", "C7"]
-  },
-  {
-    id: "rnb-1",
-    name: "R&B vi-IV-I-V",
-    description: "现代 R&B 和流行常用的进行",
-    key: "D",
-    chords: ["Bm", "G", "D", "A"]
-  },
-  {
-    id: "rock-1",
-    name: "摇滚 I-V-vi-IV (重摇滚)",
-    description: "带力量感的摇滚进行",
-    key: "E",
-    chords: ["E", "B", "C#m", "A"]
-  },
-  {
-    id: "soul-1",
-    name: "灵魂乐 I-vi-IV-V",
-    description: "60年代灵魂乐经典进行",
-    key: "C",
-    chords: ["C", "Am", "F", "G"]
-  },
-  {
-    id: "lofi-1",
-    name: "Lo-fi 爵士进行",
-    description: "适合 Lo-fi 嘻哈的和弦进行",
-    key: "Am",
-    chords: ["Am7", "D7", "Gmaj7", "Cmaj7"]
-  },
-  {
-    id: "gospel-1",
-    name: "福音 I-IV-V-vi",
-    description: "充满希望感的福音进行",
-    key: "D",
-    chords: ["D", "G", "A", "Bm"]
-  },
-  {
-    id: "ballad-1",
-    name: "抒情小调 i-VI-III-VII",
-    description: "情感丰富的小调抒情进行",
+    id: "sad-1",
+    name: "悲凉下行进行",
+    description: "黄金进行的变体，从关系小调开始，忧郁叙事性基调，现代 EDM 和摇滚乐的宠儿（Faded, Apologize）",
     key: "Am",
     chords: ["Am", "F", "C", "G"]
+  },
+  {
+    id: "japanese-1",
+    name: "日系感“王道”进行",
+    description: "在 vi 级上使用离调大和弦，突然的明亮感和强烈倾向性，大量动漫音乐中热血又带点感伤的味道",
+    key: "C",
+    chords: ["F", "G", "Em", "A"]
+  },
+  {
+    id: "line-cliche-1",
+    name: "浪漫主义：下行半音进行",
+    description: "保持和弦主干不变，内声部半音下行，极其细腻、充满电影感的纠葛情绪（肖邦、电影配乐、Autumn Leaves）",
+    key: "Am",
+    chords: ["Am", "Am(maj7)", "Am7", "Am6"]
+  },
+  {
+    id: "plagal-1",
+    name: "圣咏进行",
+    description: "又称“变格终止”，神圣宽恕的感觉；若用 Fm 则利用降 E 到 E 的半音趋近，产生极度治愈的色彩，梦幻怀旧",
+    key: "C",
+    chords: ["F", "C"]
+  },
+  {
+    id: "folk-1",
+    name: "现代民谣进行",
+    description: "阶梯式低音下行，通过转位和弦 G/B 让低音线从 C 顺滑降到 G，听感通透清新，适合木吉他风格的钢琴伴奏",
+    key: "C",
+    chords: ["C", "G/B", "Am", "G"]
   }
 ];
 

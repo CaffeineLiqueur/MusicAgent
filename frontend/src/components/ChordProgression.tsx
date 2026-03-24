@@ -10,6 +10,7 @@ import { computeChordLocal } from "../lib/chordLocal";
 import {
   playChord,
   InstrumentType,
+  INSTRUMENT_NAMES,
   unlockAudio,
   isAudioUnlocked,
   ProgressionPlayer
@@ -19,9 +20,9 @@ import PianoKeyboard from "./PianoKeyboard";
 type PlayMode = "block" | "arp";
 
 const ChordProgression: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-  const [selectedPresetId, setSelectedPresetId] = useState<string>("pop-1");
+  const [selectedPresetId, setSelectedPresetId] = useState<string>("50s-1");
   const [currentProgression, setCurrentProgression] = useState<ProgressionType>(
-    PRESET_PROGRESSIONS.find(p => p.id === "pop-1")!
+    PRESET_PROGRESSIONS.find(p => p.id === "50s-1")!
   );
   const [customChords, setCustomChords] = useState<string[]>([]);
   const [isCustomMode, setIsCustomMode] = useState(false);
@@ -367,8 +368,38 @@ const ChordProgression: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                 value={instrument}
                 onChange={(e) => setInstrument(e.target.value as InstrumentType)}
               >
-                <option value="piano">钢琴</option>
-                <option value="guitar">吉他</option>
+                <optgroup label="键盘/弹拨">
+                  <option value="piano">钢琴</option>
+                  <option value="organ">管风琴</option>
+                  <option value="harmonium">风琴</option>
+                  <option value="harp">竖琴</option>
+                  <option value="xylophone">木琴</option>
+                </optgroup>
+                <optgroup label="吉他">
+                  <option value="guitar-acoustic">原声吉他</option>
+                  <option value="guitar-electric">电吉他</option>
+                  <option value="guitar-nylon">尼龙吉他</option>
+                </optgroup>
+                <optgroup label="弦乐">
+                  <option value="violin">小提琴</option>
+                  <option value="cello">大提琴</option>
+                  <option value="contrabass">低音提琴</option>
+                </optgroup>
+                <optgroup label="木管">
+                  <option value="flute">长笛</option>
+                  <option value="clarinet">单簧管</option>
+                  <option value="bassoon">巴松管</option>
+                  <option value="saxophone">萨克斯</option>
+                </optgroup>
+                <optgroup label="铜管">
+                  <option value="trumpet">小号</option>
+                  <option value="trombone">长号</option>
+                  <option value="tuba">大号</option>
+                  <option value="french-horn">圆号</option>
+                </optgroup>
+                <optgroup label="低音">
+                  <option value="bass-electric">电贝斯</option>
+                </optgroup>
               </select>
             </div>
           </div>
