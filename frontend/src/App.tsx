@@ -3,7 +3,7 @@ import PianoKeyboard from "./components/PianoKeyboard";
 import ChordProgression from "./components/ChordProgression";
 import { fetchChord } from "./lib/api";
 import { ChordResponse } from "./lib/chordTypes";
-import { playChord, playNote, InstrumentType, preloadInstruments, unlockAudio, isAudioUnlocked } from "./lib/player";
+import { playChord, playNote, InstrumentType, preloadInstruments, unlockAudio, isAudioUnlocked, setSampleLoadingCallback, LoadingProgress } from "./lib/player";
 import HeaderBar from "./components/HeaderBar";
 import ChordForm from "./components/ChordForm";
 import ResultPanel from "./components/ResultPanel";
@@ -33,6 +33,12 @@ const App: React.FC = () => {
     typeof window !== "undefined" ? window.matchMedia("(orientation: landscape)").matches : false
   );
   const [preloading, setPreloading] = React.useState(true);
+  const [loadingProgress, setLoadingProgress] = React.useState<LoadingProgress>({
+    loaded: 0,
+    total: 1,
+    currentInstrument: "钢琴",
+    currentFile: ""
+  });
   const [audioEnabled, setAudioEnabled] = useState(() => isAudioUnlocked());
 
   React.useEffect(() => {
@@ -44,6 +50,11 @@ const App: React.FC = () => {
 
   // 预加载乐器采样
   useEffect(() => {
+    // 设置加载进度回调
+    setSampleLoadingCallback((progress) => {
+      setLoadingProgress(progress);
+    });
+
     const load = async () => {
       try {
         await preloadInstruments();
@@ -51,9 +62,14 @@ const App: React.FC = () => {
         // 忽略预加载错误，按需加载
       } finally {
         setPreloading(false);
+        setSampleLoadingCallback(null);
       }
     };
     load();
+
+    return () => {
+      setSampleLoadingCallback(null);
+    };
   }, []);
 
   const doFetch = async (overrideSymbol?: string) => {
@@ -136,6 +152,34 @@ const App: React.FC = () => {
     }
     setView("chord");
   };
+
+  // 显示加载进度覆盖层
+  if (preloading) {
+    const percent = Math.min(100, Math.round((loadingProgress.loaded / loadingProgress.total) * 100));
+    return (
+      <div className="loading-overlay">
+        <div className="loading-card">
+          <div className="loading-brand">
+            <img className="loading-logo" src={assetPath("/icons/icon-gemini.png")} alt="SelahFlow" />
+            <h1 className="loading-title">SelahFlow</h1>
+          </div>
+          <div className="progress-container">
+            <div className="progress-label">
+              <span className="progress-text">正在加载 {loadingProgress.currentInstrument} 音色</span>
+              <span className="progress-percent">{percent}%</span>
+            </div>
+            <div className="progress-bar-track">
+              <div className="progress-bar-fill" style={{ width: `${percent}%` }} />
+            </div>
+            {loadingProgress.currentFile && (
+              <div className="progress-file">{loadingProgress.currentFile}</div>
+            )}
+          </div>
+          <p className="loading-hint">首次加载可能需要一些时间，音色将被缓存供离线使用</p>
+        </div>
+      </div>
+    );
+  }
 
   if (view === "home") {
     return (
@@ -246,11 +290,6 @@ const App: React.FC = () => {
             </div>
           ) : (
             <div className="empty">解析后将高亮对应音，左右滑动可查看更多键。</div>
-          )}
-          {preloading && (
-            <div className="muted" style={{ textAlign: "center", padding: "8px" }}>
-              正在预加载乐器采样...
-            </div>
           )}
         </div>
 

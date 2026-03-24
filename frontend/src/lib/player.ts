@@ -545,7 +545,13 @@ function midiToNoteName(midi: number): string {
 }
 
 // 加载状态回调
-type LoadingCallback = (loaded: number, total: number) => void;
+export type LoadingProgress = {
+  loaded: number;
+  total: number;
+  currentInstrument: string;
+  currentFile: string;
+};
+type LoadingCallback = (progress: LoadingProgress) => void;
 let onLoadingUpdate: LoadingCallback | null = null;
 
 // 设置加载状态回调
@@ -553,29 +559,84 @@ export function setSampleLoadingCallback(callback: LoadingCallback | null) {
   onLoadingUpdate = callback;
 }
 
-// 创建采样器乐器
+// 计算所有需要加载的样本总数
+function calculateTotalSamples(instruments: InstrumentType[]): number {
+  let total = 0;
+  for (const inst of instruments) {
+    total += Object.keys(INSTRUMENT_SAMPLES[inst]).length;
+  }
+  return total;
+}
+
+// 全局加载进度追踪
+let globalLoaded = 0;
+let globalTotal = 0;
+let isLoadingGlobal = false;
+
+// 创建采样器乐器 - 带进度追踪
 async function createSampler(instrument: InstrumentType): Promise<Sampler> {
-  return new Promise((resolve, reject) => {
-    const baseUrl = assetPath(`/samples/${instrument}/`);
-    const samples = INSTRUMENT_SAMPLES[instrument];
-    const sampleCount = Object.keys(samples).length;
+  return new Promise(async (resolve, reject) => {
+    try {
+      const baseUrl = assetPath(`/samples/${instrument}/`);
+      const samples = INSTRUMENT_SAMPLES[instrument];
+      const sampleEntries = Object.entries(samples);
 
-    console.log(`Loading ${instrument} samples from: ${baseUrl}`);
+      console.log(`Loading ${instrument} samples from: ${baseUrl}`);
 
-    const sampler = new Sampler({
-      urls: samples,
-      baseUrl: baseUrl,
-      release: 1.5,
-      onload: () => {
-        console.log(`${instrument} samples loaded successfully`);
-        onLoadingUpdate?.(sampleCount, sampleCount);
-        resolve(sampler);
-      },
-      onerror: (err) => {
-        console.error(`Failed to load ${instrument} samples:`, err);
-        reject(err);
+      // 如果是全局加载模式，进度已经在跟踪了
+      // 如果不是全局加载，只跟踪这个乐器
+      const isSingleInstrumentLoad = !isLoadingGlobal;
+      if (isSingleInstrumentLoad) {
+        globalTotal = sampleEntries.length;
+        globalLoaded = 0;
       }
-    }).toDestination();
+
+      // 先获取所有样本并创建 blob URLs
+      const blobUrls: Record<string, string> = {};
+      for (const [note, fileName] of sampleEntries) {
+        try {
+          const url = `${baseUrl}${fileName}`;
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch ${fileName}: ${response.status}`);
+          }
+          const blob = await response.blob();
+          blobUrls[note] = URL.createObjectURL(blob);
+
+          // 更新进度
+          globalLoaded++;
+          onLoadingUpdate?.({
+            loaded: globalLoaded,
+            total: globalTotal,
+            currentInstrument: INSTRUMENT_NAMES[instrument],
+            currentFile: fileName
+          });
+        } catch (err) {
+          console.warn(`Failed to load ${fileName}, skipping:`, err);
+        }
+      }
+
+      // 使用 blob URLs 创建 Sampler
+      const sampler = new Sampler({
+        urls: blobUrls,
+        release: 1.5,
+        onload: () => {
+          console.log(`${instrument} samples loaded successfully`);
+          // 释放 blob URLs
+          Object.values(blobUrls).forEach(url => URL.revokeObjectURL(url));
+          resolve(sampler);
+        },
+        onerror: (err) => {
+          console.error(`Failed to load ${instrument} samples:`, err);
+          // 清理 blob URLs
+          Object.values(blobUrls).forEach(url => URL.revokeObjectURL(url));
+          reject(err);
+        }
+      }).toDestination();
+    } catch (err) {
+      console.error(`Failed to load ${instrument} samples:`, err);
+      reject(err);
+    }
   });
 }
 
@@ -793,10 +854,28 @@ export class ProgressionPlayer {
 }
 
 // 预加载主要乐器
-export async function preloadInstruments(): Promise<void> {
+export async function preloadInstruments(instrumentsToPreload: InstrumentType[] = ["piano"]): Promise<void> {
   await ensureToneStarted();
-  // 只预加载钢琴，避免加载太多
-  await Promise.allSettled([
-    getInstrument("piano")
-  ]);
+
+  // 设置全局加载状态
+  isLoadingGlobal = true;
+  globalLoaded = 0;
+  globalTotal = calculateTotalSamples(instrumentsToPreload);
+
+  // 初始进度更新
+  onLoadingUpdate?.({
+    loaded: 0,
+    total: globalTotal,
+    currentInstrument: INSTRUMENT_NAMES[instrumentsToPreload[0]] || "钢琴",
+    currentFile: ""
+  });
+
+  try {
+    // 按顺序加载乐器以获得更准确的进度
+    for (const instrument of instrumentsToPreload) {
+      await getInstrument(instrument);
+    }
+  } finally {
+    isLoadingGlobal = false;
+  }
 }
