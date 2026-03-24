@@ -6,7 +6,9 @@
       "Bash(cd:*)",
       "Bash(node download-samples.js)",
       "Bash(pnpm build:*)",
-      "Bash(cp:*)"
+      "Bash(cp:*)",
+      "Bash(git:*)",
+      "Bash($env:VITE_DEPLOY_BASE=\"\")"
     ]
   }
 }

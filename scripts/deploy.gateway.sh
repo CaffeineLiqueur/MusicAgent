@@ -40,6 +40,9 @@ REMOTE="${REMOTE_USER}@${REMOTE_HOST}"
 
 echo "==> [1/5] 本地构建 frontend"
 cd "${FRONTEND_DIR}"
+# 确保部署到 selahflow.livenagain.com 根路径，清除 VITE_DEPLOY_BASE
+unset VITE_DEPLOY_BASE
+export VITE_DEPLOY_BASE=""
 pnpm install
 pnpm build
 

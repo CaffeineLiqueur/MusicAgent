@@ -537,6 +537,10 @@ const INSTRUMENT_SAMPLES: Record<InstrumentType, Record<string, string>> = {
 type InstrumentInstance = Sampler | PolySynth;
 const instruments: Partial<Record<InstrumentType, Promise<InstrumentInstance>>> = {};
 
+// 预加载的样本 blobs 缓存（不需要 AudioContext）
+type SampleBlobs = Record<string, Blob>;
+const preloadedBlobs: Partial<Record<InstrumentType, SampleBlobs>> = {};
+
 function midiToNoteName(midi: number): string {
   const names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
   const pc = ((midi % 12) + 12) % 12;
@@ -573,6 +577,81 @@ let globalLoaded = 0;
 let globalTotal = 0;
 let isLoadingGlobal = false;
 
+// 仅预加载样本 blobs（不需要 AudioContext）
+async function preloadSampleBlobs(instrument: InstrumentType): Promise<SampleBlobs> {
+  const baseUrl = assetPath(`/samples/${instrument}/`);
+  const samples = INSTRUMENT_SAMPLES[instrument];
+  const sampleEntries = Object.entries(samples);
+
+  console.log(`[DEBUG] preloadSampleBlobs for ${instrument} from: ${baseUrl}`);
+  console.log(`[DEBUG] Total samples:`, sampleEntries.length);
+
+  const blobs: SampleBlobs = {};
+  let loadSuccessCount = 0;
+  let loadFailCount = 0;
+
+  for (const [note, fileName] of sampleEntries) {
+    try {
+      const url = `${baseUrl}${fileName}`;
+      console.log(`[DEBUG] Fetching: ${url}`);
+
+      const response = await fetch(url);
+      console.log(`[DEBUG] Response for ${fileName}: status=${response.status}, ok=${response.ok}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${fileName}: ${response.status}`);
+      }
+      const blob = await response.blob();
+      console.log(`[DEBUG] Loaded ${fileName}: size=${blob.size}`);
+
+      blobs[note] = blob;
+      loadSuccessCount++;
+
+      // 更新进度
+      globalLoaded++;
+      onLoadingUpdate?.({
+        loaded: globalLoaded,
+        total: globalTotal,
+        currentInstrument: INSTRUMENT_NAMES[instrument],
+        currentFile: fileName
+      });
+    } catch (err) {
+      loadFailCount++;
+      console.error(`[DEBUG] Failed to load ${fileName}:`, err);
+    }
+  }
+
+  console.log(`[DEBUG] preloadSampleBlobs done: success=${loadSuccessCount}, failed=${loadFailCount}`);
+  return blobs;
+}
+
+// 从预加载的 blobs 创建 Sampler（需要 AudioContext 已启动）
+function createSamplerFromBlobs(instrument: InstrumentType, blobs: SampleBlobs): Promise<Sampler> {
+  return new Promise((resolve, reject) => {
+    console.log(`[DEBUG] Creating Sampler from preloaded blobs for ${instrument}`);
+
+    const blobUrls: Record<string, string> = {};
+    for (const [note, blob] of Object.entries(blobs)) {
+      blobUrls[note] = URL.createObjectURL(blob);
+    }
+
+    const sampler = new Sampler({
+      urls: blobUrls,
+      release: 1.5,
+      onload: () => {
+        console.log(`${instrument} samples loaded successfully`);
+        Object.values(blobUrls).forEach(url => URL.revokeObjectURL(url));
+        resolve(sampler);
+      },
+      onerror: (err) => {
+        console.error(`Failed to create sampler for ${instrument}:`, err);
+        Object.values(blobUrls).forEach(url => URL.revokeObjectURL(url));
+        reject(err);
+      }
+    }).toDestination();
+  });
+}
+
 // 创建采样器乐器 - 带进度追踪
 async function createSampler(instrument: InstrumentType): Promise<Sampler> {
   return new Promise(async (resolve, reject) => {
@@ -581,7 +660,24 @@ async function createSampler(instrument: InstrumentType): Promise<Sampler> {
       const samples = INSTRUMENT_SAMPLES[instrument];
       const sampleEntries = Object.entries(samples);
 
-      console.log(`Loading ${instrument} samples from: ${baseUrl}`);
+      console.log(`[DEBUG] createSampler for ${instrument}`);
+
+      // 如果有预加载的 blobs，直接用它们创建 Sampler
+      if (preloadedBlobs[instrument]) {
+        console.log(`[DEBUG] Using preloaded blobs for ${instrument}`);
+        try {
+          const sampler = await createSamplerFromBlobs(instrument, preloadedBlobs[instrument]!);
+          delete preloadedBlobs[instrument]; // 清理缓存
+          resolve(sampler);
+          return;
+        } catch (err) {
+          console.warn(`[DEBUG] Failed to use preloaded blobs, falling back to fetch:`, err);
+        }
+      }
+
+      console.log(`[DEBUG] Loading ${instrument} samples from: ${baseUrl}`);
+      console.log(`[DEBUG] BASE_URL from import.meta.env:`, import.meta.env.BASE_URL);
+      console.log(`[DEBUG] Total samples to load for ${instrument}:`, sampleEntries.length);
 
       // 如果是全局加载模式，进度已经在跟踪了
       // 如果不是全局加载，只跟踪这个乐器
@@ -593,15 +689,25 @@ async function createSampler(instrument: InstrumentType): Promise<Sampler> {
 
       // 先获取所有样本并创建 blob URLs
       const blobUrls: Record<string, string> = {};
+      let loadSuccessCount = 0;
+      let loadFailCount = 0;
+
       for (const [note, fileName] of sampleEntries) {
         try {
           const url = `${baseUrl}${fileName}`;
+          console.log(`[DEBUG] Fetching: ${url}`);
+
           const response = await fetch(url);
+          console.log(`[DEBUG] Response for ${fileName}: status=${response.status}, ok=${response.ok}, type=${response.type}`);
+
           if (!response.ok) {
-            throw new Error(`Failed to fetch ${fileName}: ${response.status}`);
+            throw new Error(`Failed to fetch ${fileName}: ${response.status} ${response.statusText}`);
           }
           const blob = await response.blob();
+          console.log(`[DEBUG] Loaded ${fileName}: size=${blob.size} bytes, type=${blob.type}`);
+
           blobUrls[note] = URL.createObjectURL(blob);
+          loadSuccessCount++;
 
           // 更新进度
           globalLoaded++;
@@ -612,9 +718,12 @@ async function createSampler(instrument: InstrumentType): Promise<Sampler> {
             currentFile: fileName
           });
         } catch (err) {
-          console.warn(`Failed to load ${fileName}, skipping:`, err);
+          loadFailCount++;
+          console.error(`[DEBUG] Failed to load ${fileName}:`, err);
         }
       }
+
+      console.log(`[DEBUG] Finished loading ${instrument}: success=${loadSuccessCount}, failed=${loadFailCount}, total=${sampleEntries.length}`);
 
       // 使用 blob URLs 创建 Sampler
       const sampler = new Sampler({
@@ -686,8 +795,24 @@ async function getInstrument(instrument: InstrumentType): Promise<InstrumentInst
 }
 
 async function ensureToneStarted() {
+  console.log(`[DEBUG] ensureToneStarted() called, context.state=${context.state}`);
   if (context.state !== "running") {
-    await start();
+    console.log(`[DEBUG] Starting Tone.js...`);
+    try {
+      // 添加超时，避免无限等待
+      await Promise.race([
+        start(),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Tone.js start timeout")), 5000)
+        )
+      ]);
+      console.log(`[DEBUG] Tone.js started, context.state=${context.state}`);
+    } catch (e) {
+      console.warn(`[DEBUG] Tone.js start failed (needs user gesture?):`, e);
+      throw e;
+    }
+  } else {
+    console.log(`[DEBUG] Tone.js already running`);
   }
 }
 
@@ -853,14 +978,41 @@ export class ProgressionPlayer {
   }
 }
 
-// 预加载主要乐器
+// ============== 调试测试函数 ==============
+// 在浏览器控制台运行: window.testSampleLoading()
+(window as any).testSampleLoading = async function() {
+  console.log("=== Testing sample loading ===");
+  const testPaths = [
+    "/samples/piano/A4.mp3",
+    "/samples/piano/C4.mp3",
+  ];
+  for (const path of testPaths) {
+    try {
+      const url = assetPath(path);
+      console.log(`Testing: ${url}`);
+      const response = await fetch(url);
+      console.log(`=> Status: ${response.status}, ok: ${response.ok}`);
+      if (response.ok) {
+        const blob = await response.blob();
+        console.log(`=> Size: ${blob.size} bytes`);
+      }
+    } catch (e) {
+      console.error(`=> Failed:`, e);
+    }
+  }
+  console.log("=== Test complete ===");
+};
+
+// 预加载主要乐器（仅加载 blobs，不创建 Sampler）
 export async function preloadInstruments(instrumentsToPreload: InstrumentType[] = ["piano"]): Promise<void> {
-  await ensureToneStarted();
+  console.log(`[DEBUG] preloadInstruments called with:`, instrumentsToPreload);
 
   // 设置全局加载状态
   isLoadingGlobal = true;
   globalLoaded = 0;
   globalTotal = calculateTotalSamples(instrumentsToPreload);
+
+  console.log(`[DEBUG] Global loading setup: globalTotal=${globalTotal}`);
 
   // 初始进度更新
   onLoadingUpdate?.({
@@ -871,9 +1023,11 @@ export async function preloadInstruments(instrumentsToPreload: InstrumentType[] 
   });
 
   try {
-    // 按顺序加载乐器以获得更准确的进度
+    // 按顺序预加载样本 blobs（不需要 AudioContext）
     for (const instrument of instrumentsToPreload) {
-      await getInstrument(instrument);
+      console.log(`[DEBUG] Preloading blobs for: ${instrument}`);
+      preloadedBlobs[instrument] = await preloadSampleBlobs(instrument);
+      console.log(`[DEBUG] Blobs cached for: ${instrument}`);
     }
   } finally {
     isLoadingGlobal = false;
